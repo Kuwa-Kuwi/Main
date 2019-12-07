@@ -7,16 +7,22 @@ import requests
 
 # PINS
 BUZZER_PIN = 4
+LED_GREEN_PINS = [17, 18]
+LED_YELLOW_PINS = [22, 27]
+LED_RED_PINS = [23, 24]
 
 # SOUND INTENSITIES SETTING
-INTENSITY_THRESHOLD = HIGH_INTENSITY= 30
-MINIMUM_INTENSITY = 20
+HIGH_INTENSITY = 30
+LOW_INTENSITY = 20
 MEDIUM_INTENSITY = 25
 
 # GPIO Init
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(BUZZER_PIN, GPIO.OUT)
+GPIO.setup(LED_GREEN_PINS, GPIO.OUT)
+GPIO.setup(LED_YELLOW_PINS, GPIO.OUT)
+GPIO.setup(LED_RED_PINS, GPIO.OUT)
 
 # URL
 WEB_URL = 'http://192.168.4.1:8000/noise-log/create-noise-log/'
@@ -24,11 +30,33 @@ WEB_URL = 'http://192.168.4.1:8000/noise-log/create-noise-log/'
 # Set serial mode
 ser = serial.Serial('/dev/ttyACM0', 9600)
 try:
+	lcd = LCD()
 	while True:
 		read_serial = int(ser.readline().decode('utf-8'))
 		print(read_serial)
 		sleep(0.1)
-		if read_serial > INTENSITY_THRESHOLD:
+
+		if read_serial < LOW_INTENSITY or LOW_INTENSITY <= read_serial < MEDIUM_INTENSITY:
+			GPIO.output(LED_GREEN_PINS, GPIO.HIGH)
+			GPIO.output(LED_YELLOW_PINS, GPIO.LOW)
+			GPIO.output(LED_RED_PINS, GPIO.LOW)
+			lcd.lcd_string(f"DECIBEL: {str(read_serial)}", lcd.LCD_LINE_1)
+			lcd.lcd_string(f"CATEGORY: LOW", lcd.LCD_LINE_2)
+
+		elif MEDIUM_INTENSITY <= read_serial < HIGH_INTENSITY:
+			GPIO.output(LED_GREEN_PINS, GPIO.HIGH)
+			GPIO.output(LED_YELLOW_PINS, GPIO.HIGH)
+			GPIO.output(LED_RED_PINS, GPIO.LOW)
+			lcd.lcd_string(f"DECIBEL: {str(read_serial)}", lcd.LCD_LINE_1)
+			lcd.lcd_string(f"CATEGORY: MEDIUM", lcd.LCD_LINE_2)
+			
+		elif read_serial >= HIGH_INTENSITY:
+			GPIO.output(LED_GREEN_PINS, GPIO.HIGH)
+			GPIO.output(LED_YELLOW_PINS, GPIO.HIGH)
+			GPIO.output(LED_RED_PINS, GPIO.HIGH)
+			lcd.lcd_string(f"DECIBEL: {str(read_serial)}", lcd.LCD_LINE_1)
+			lcd.lcd_string(f"CATEGORY: HIGH", lcd.LCD_LINE_2)
+
 			GPIO.output(BUZZER_PIN, GPIO.LOW)
 			sleep(0.5)
 
@@ -45,8 +73,10 @@ try:
 			GPIO.output(BUZZER_PIN, GPIO.HIGH)
 except KeyboardInterrupt:
 	GPIO.cleanup()
+	lcd.lcd_byte(0x01, lcd.LCD_CMD)
 finally:
 	GPIO.cleanup()
+	lcd.lcd_byte(0x01, lcd.LCD_CMD)
 
 
 
