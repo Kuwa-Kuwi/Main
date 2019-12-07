@@ -2,38 +2,45 @@ from datetime import datetime
 from time import sleep
 import serial
 import RPi.GPIO as GPIO
+import smbus
 import requests
 
+# PINS
 BUZZER_PIN = 4
-SENSITIVITY_THRESHOLD = 30
+
+# SOUND INTENSITIES SETTING
+INTENSITY_THRESHOLD = HIGH_INTENSITY= 30
+MINIMUM_INTENSITY = 20
+MEDIUM_INTENSITY = 25
+
 # GPIO Init
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(BUZZER_PIN, GPIO.OUT)
-#
+
+# URL
+WEB_URL = 'http://192.168.4.1:8000/noise-log/create-noise-log/'
+
 # Set serial mode
 ser = serial.Serial('/dev/ttyACM0', 9600)
 try:
 	while True:
-		read_serial = ser.readline().decode('utf-8')
-		print((int(read_serial)))
+		read_serial = int(ser.readline().decode('utf-8'))
+		print(read_serial)
 		sleep(0.1)
-		if int(read_serial) > SENSITIVITY_THRESHOLD:
+		if read_serial > INTENSITY_THRESHOLD:
 			GPIO.output(BUZZER_PIN, GPIO.LOW)
 			sleep(0.5)
-			GPIO.output(BUZZER_PIN, GPIO.HIGH)
-			sleep(2)
 
-			# KIRIM INFO KE WEB APP
 			timestamp = datetime.now()
 			data = {
 				'timestamp': timestamp,
-				'decibel': int(read_serial),
-				}
-			requests.post(
-				'http://192.168.4.1:8000/noise-log/create-noise-log/',
-				data
-			) 
+				'decibel': read_serial,
+			}
+			requests.post(WEB_URL, data)
+
+			GPIO.output(BUZZER_PIN, GPIO.HIGH)
+			sleep(2)
 		else:
 			GPIO.output(BUZZER_PIN, GPIO.HIGH)
 except KeyboardInterrupt:
@@ -41,3 +48,77 @@ except KeyboardInterrupt:
 finally:
 	GPIO.cleanup()
 
+
+
+class LCD:
+	
+	# Define some device parameters
+	I2C_ADDR  = 0x3f # I2C device address, if any error, change this address to 0x3f
+	LCD_WIDTH = 16   # Maximum characters per line
+
+	# Define some device constants
+	LCD_CHR = 1 # Mode - Sending data
+	LCD_CMD = 0 # Mode - Sending command
+
+	LCD_LINE_1 = 0x80 # LCD RAM address for the 1st line
+	LCD_LINE_2 = 0xC0 # LCD RAM address for the 2nd line
+	LCD_LINE_3 = 0x94 # LCD RAM address for the 3rd line
+	LCD_LINE_4 = 0xD4 # LCD RAM address for the 4th line
+
+	LCD_BACKLIGHT  = 0x08  # On
+	#LCD_BACKLIGHT = 0x00  # Off
+
+	ENABLE = 0b00000100 # Enable bit
+
+	# Timing constants
+	E_PULSE = 0.0005
+	E_DELAY = 0.0005
+
+	#Open I2C interface
+	#bus = smbus.SMBus(0)  # Rev 1 Pi uses 0
+	bus = smbus.SMBus(1) # Rev 2 Pi uses 1
+
+	def __init__(self):
+		self.lcd_init()
+
+	def lcd_init(self):
+		# Initialise display
+		self.lcd_byte(0x33, self.LCD_CMD) # 110011 Initialise
+		self.lcd_byte(0x32, self.LCD_CMD) # 110010 Initialise
+		self.lcd_byte(0x06, self.LCD_CMD) # 000110 Cursor move direction
+		self.lcd_byte(0x0C, self.LCD_CMD) # 001100 Display On,Cursor Off, Blink Off 
+		self.lcd_byte(0x28, self.LCD_CMD) # 101000 Data length, number of lines, font size
+		self.lcd_byte(0x01, self.LCD_CMD) # 000001 Clear display
+		sleep(self.E_DELAY)
+
+	def lcd_byte(self, bits, mode):
+		# Send byte to data pins
+		# bits = the data
+		# mode = 1 for data
+		#        0 for command
+
+		bits_high = mode | (bits & 0xF0) | self.LCD_BACKLIGHT
+		bits_low = mode | ((bits<<4) & 0xF0) | self.LCD_BACKLIGHT
+
+		# High bits
+		bus.write_byte(self.I2C_ADDR, bits_high)
+		self.lcd_toggle_enable(bits_high)
+
+		# Low bits
+		bus.write_byte(self.I2C_ADDR, bits_low)
+		self.lcd_toggle_enable(bits_low)
+	
+	def lcd_toggle_enable(self, bits):
+		# Toggle enable
+		sleep(self.E_DELAY)
+		bus.write_byte(self.I2C_ADDR, (bits | self.ENABLE))
+		sleep(self.E_PULSE)
+		bus.write_byte(self.I2C_ADDR,(bits & ~self.ENABLE))
+		sleep(self.E_DELAY)
+	
+	def lcd_string(self, message, line):
+		# Send string to display
+		message = message.ljust(self.LCD_WIDTH, " ")
+		self.lcd_byte(line, self.LCD_CMD)
+		for i in range(self.LCD_WIDTH):
+			self.lcd_byte(ord(message[i]), self.LCD_CHR)
