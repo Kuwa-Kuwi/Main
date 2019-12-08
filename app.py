@@ -13,8 +13,8 @@ LED_RED_PINS = [23, 24]
 
 # SOUND INTENSITIES SETTING
 LOW_INTENSITY = 30
-MEDIUM_INTENSITY = 35
-HIGH_INTENSITY = 40
+MEDIUM_INTENSITY = 45
+HIGH_INTENSITY = 60
 
 # GPIO Init
 GPIO.setwarnings(False)
@@ -113,22 +113,22 @@ try:
             GPIO.output(LED_GREEN_PINS, GPIO.HIGH)
             GPIO.output(LED_YELLOW_PINS, GPIO.LOW)
             GPIO.output(LED_RED_PINS, GPIO.LOW)
-            lcd.lcd_string(f"DECIBEL: {str(read_serial)}", lcd.LCD_LINE_1)
-            lcd.lcd_string(f"CATEGORY: LOW", lcd.LCD_LINE_2)
+            lcd.lcd_string(str(read_serial), lcd.LCD_LINE_1)
+            lcd.lcd_string("LOW", lcd.LCD_LINE_2)
 
         elif MEDIUM_INTENSITY <= read_serial < HIGH_INTENSITY:
             GPIO.output(LED_GREEN_PINS, GPIO.HIGH)
             GPIO.output(LED_YELLOW_PINS, GPIO.HIGH)
             GPIO.output(LED_RED_PINS, GPIO.LOW)
-            lcd.lcd_string(f"DECIBEL: {str(read_serial)}", lcd.LCD_LINE_1)
-            lcd.lcd_string(f"CATEGORY: MEDIUM", lcd.LCD_LINE_2)
+            lcd.lcd_string(str(read_serial), lcd.LCD_LINE_1)
+            lcd.lcd_string("MEDIUM", lcd.LCD_LINE_2)
             
         elif read_serial >= HIGH_INTENSITY:
             GPIO.output(LED_GREEN_PINS, GPIO.HIGH)
             GPIO.output(LED_YELLOW_PINS, GPIO.HIGH)
             GPIO.output(LED_RED_PINS, GPIO.HIGH)
-            lcd.lcd_string("A", lcd.LCD_LINE_1)
-            lcd.lcd_string("B", lcd.LCD_LINE_2)
+            lcd.lcd_string(str(read_serial), lcd.LCD_LINE_1)
+            lcd.lcd_string("HIGH", lcd.LCD_LINE_2)
 
             GPIO.output(BUZZER_PIN, GPIO.LOW)
             sleep(0.5)
