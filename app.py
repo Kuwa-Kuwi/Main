@@ -12,9 +12,9 @@ LED_YELLOW_PINS = [16, 22]
 LED_RED_PINS = [23, 24]
 
 # SOUND INTENSITIES SETTING
-LOW_INTENSITY = 30
-MEDIUM_INTENSITY = 45
-HIGH_INTENSITY = 60
+LOW_INTENSITY = 50
+MEDIUM_INTENSITY = 60
+HIGH_INTENSITY = 70
 
 # GPIO Init
 GPIO.setwarnings(False)
@@ -30,7 +30,7 @@ WEB_URL = 'http://192.168.4.1:8000/noise-log/create-noise-log/'
 class LCD:
     
     # Define some device parameters
-    I2C_ADDR  = 0x3f # I2C device address, if any error, change this address to 0x3f
+    I2C_ADDR  = 0x27 # I2C device address, if any error, change this address to 0x3f
     LCD_WIDTH = 16   # Maximum characters per line
 
     # Define some device constants
@@ -105,6 +105,7 @@ ser = serial.Serial('/dev/ttyACM0', 9600)
 lcd = LCD()
 try:
     while True:
+        GPIO.out(BUZZER_PIN, GPIO.LOW)
         read_serial = int(ser.readline().decode('utf-8'))
         print(read_serial)
         sleep(0.1)
